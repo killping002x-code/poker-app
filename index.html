@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0f14">
+<title>Poker Voice Assistant</title>
+<style>
+:root{--bg:#0b0f14;--panel:#141b24;--panel2:#1b2430;--line:#263243;--text:#e8eef5;--mute:#8a9bb0;--accent:#2ecc71;--accent2:#1fa85a;--red:#e74c3c;--amber:#f1c40f;--blue:#4aa3ff}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:Roboto,Arial,sans-serif}
+body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+header{padding:10px 14px 6px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);background:var(--panel)}
+header h1{font-size:17px;margin:0;font-weight:600}
+header h1 span{color:var(--accent)}
+#status{font-size:12px;padding:4px 10px;border-radius:12px;background:var(--panel2);color:var(--mute);border:1px solid var(--line)}
+#status.on{color:#06210f;background:var(--accent);border-color:var(--accent)}
+#status.err{color:#fff;background:var(--red);border-color:var(--red)}
+#status.speak{color:#04203a;background:var(--blue);border-color:var(--blue)}
+nav{display:flex;background:var(--panel);border-bottom:1px solid var(--line)}
+nav button{flex:1;padding:12px 0;background:none;border:0;color:var(--mute);font-size:14px;border-bottom:3px solid transparent}
+nav button.act{color:var(--text);border-bottom-color:var(--accent)}
+main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.page{display:none;padding:12px 14px 16px}
+.page.act{display:block}
+.banner{background:#3a2a0a;border:1px solid #7a5a12;color:#ffd98a;padding:10px 12px;border-radius:10px;font-size:13px;margin-bottom:10px;line-height:1.4}
+.banner.bad{background:#3a1412;border-color:#8a2b24;color:#ffb4ac}
+.msg{margin:8px 0;padding:10px 12px;border-radius:14px;font-size:15px;line-height:1.4;max-width:88%;word-wrap:break-word;white-space:pre-wrap}
+.msg.user{background:var(--accent2);color:#fff;margin-left:auto;border-bottom-right-radius:4px}
+.msg.bot{background:var(--panel2);border:1px solid var(--line);border-bottom-left-radius:4px}
+.empty{color:var(--mute);text-align:center;font-size:14px;margin-top:30px;line-height:1.6}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
+.card h2{font-size:14px;margin:0 0 10px;color:var(--accent);text-transform:uppercase;letter-spacing:.6px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 0}
+.row label{font-size:14px}
+select,input[type=range]{max-width:55%;min-width:40%}
+select{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:9px;font-size:14px}
+input[type=checkbox]{width:26px;height:26px;accent-color:var(--accent)}
+.btn{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:11px 14px;font-size:14px}
+.btn.pri{background:var(--accent2);border-color:var(--accent2);color:#fff}
+.btn.dng{color:#ff8a80}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.diag div{font-size:13px;margin:5px 0;display:flex;justify-content:space-between}
+.ok{color:var(--accent)}.no{color:var(--red)}
+.help p,.help li{font-size:14px;line-height:1.5;color:#cfd9e4}
+.help h3{font-size:14px;color:var(--amber);margin:14px 0 4px}
+.help ul,.help ol{padding-left:20px;margin:4px 0}
+#dock{background:var(--panel);border-top:1px solid var(--line);padding:8px 12px calc(10px + env(safe-area-inset-bottom))}
+#alts{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+#alts button{background:var(--panel2);border:1px solid var(--line);color:var(--blue);border-radius:14px;padding:6px 10px;font-size:12px}
+#inputrow{display:flex;gap:8px;align-items:flex-end}
+#txt{flex:1;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:16px;resize:none;height:46px;font-family:inherit}
+#txt:focus{outline:none;border-color:var(--accent)}
+#send{height:46px;padding:0 14px}
+#microw{display:flex;align-items:center;justify-content:space-between;margin-top:8px}
+#mic{width:92px;height:92px;border-radius:50%;border:0;background:radial-gradient(circle at 35% 30%,#3ee08a,#1a9a52);color:#fff;font-size:38px;box-shadow:0 4px 18px rgba(46,204,113,.35);margin:0 auto}
+#mic.on{background:radial-gradient(circle at 35% 30%,#ff7b6b,#c0392b);animation:pulse 1.2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(231,76,60,.6)}70%{box-shadow:0 0 0 22px rgba(231,76,60,0)}100%{box-shadow:0 0 0 0 rgba(231,76,60,0)}}
+.side{width:64px;height:48px;font-size:13px;padding:0}
+#hint{text-align:center;font-size:12px;color:var(--mute);margin-top:6px;min-height:16px}
+.lbl{font-size:12px;color:var(--mute);margin:8px 0 2px;text-transform:uppercase;letter-spacing:.5px}
+.cards{min-height:48px}
+.pc{display:inline-block;min-width:46px;text-align:center;padding:8px 6px;margin:3px 4px 3px 0;border-radius:8px;background:#f2f2f2;color:#111;font-weight:700;font-size:21px}
+.pc.red{color:#d11}
+.pc.as{border:2px dashed #888}
+.nocard{color:var(--mute);font-size:14px}
+.kv{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:14px}
+.kv:last-child{border-bottom:0}
+.kv span{color:var(--mute)}
+input[type=number]{background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:9px;font-size:16px;width:45%}
+.alog div{font-size:14px;padding:5px 0;border-bottom:1px solid var(--line)}
+.alog div:last-child{border-bottom:0}
+</style>
+</head>
+<body>
+<header>
+  <h1>&#9824; Poker <span>Voice</span> Assistant</h1>
+  <div id="status">Ready</div>
+</header>
+<nav>
+  <button class="act" data-tab="talk">Talk</button>
+  <button data-tab="hand">Hand</button>
+  <button data-tab="settings">Settings</button>
+  <button data-tab="help">Help</button>
+</nav>
+<main>
+  <section id="page-talk" class="page act">
+    <div id="banner"></div>
+    <div id="log"></div>
+  </section>
+
+  <section id="page-hand" class="page">
+    <div class="card">
+      <h2>Current hand</h2>
+      <div class="lbl">Your cards</div><div class="cards" id="v-hero"></div>
+      <div class="lbl">Board <span id="v-street"></span></div><div class="cards" id="v-board"></div>
+      <div class="kv"><span>Game</span><b id="v-mode"></b></div>
+      <div class="kv"><span>Effective stack</span><b id="v-stack"></b></div>
+      <div class="kv"><span>Your position</span><b id="v-pos"></b></div>
+      <div class="kv"><span>Villain position</span><b id="v-vpos"></b></div>
+      <div class="kv"><span>Pot</span><b id="v-pot"></b></div>
+      <div class="kv"><span>Facing a bet of</span><b id="v-call"></b></div>
+      <div class="kv"><span>Saved hands</span><b id="v-saved"></b></div>
+    </div>
+    <div class="card">
+      <h2>Fix by hand</h2>
+      <div class="row"><label for="e-mode">Game</label>
+        <select id="e-mode"><option value="cash">Cash game</option><option value="mtt">Tournament (MTT)</option><option value="sng">Sit and go</option></select></div>
+      <div class="row"><label for="e-stack">Stack (big blinds)</label><input type="number" id="e-stack" inputmode="decimal" min="1"></div>
+      <div class="row"><label for="e-pos">Your position</label>
+        <select id="e-pos"><option value="">Not set</option><option>UTG</option><option>UTG+1</option><option>EP</option><option>MP</option><option>LJ</option><option>HJ</option><option>CO</option><option>BTN</option><option>SB</option><option>BB</option></select></div>
+      <div class="row"><label for="e-pot">Pot (big blinds)</label><input type="number" id="e-pot" inputmode="decimal" min="0"></div>
+      <div class="row"><label for="e-call">Facing bet (big blinds)</label><input type="number" id="e-call" inputmode="decimal" min="0"></div>
+      <div class="btns">
+        <button class="btn pri" id="b-new">New hand</button>
+        <button class="btn" id="b-clearh">Clear my cards</button>
+        <button class="btn" id="b-clearb">Clear board</button>
+        <button class="btn" id="b-saveh">Save hand</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Action log</h2>
+      <div class="alog" id="v-log"></div>
+    </div>
+  </section>
+
+  <section id="page-settings" class="page">
+    <div class="card">
+      <h2>Voice input</h2>
+      <div class="row"><label for="s-lang">Language / accent</label>
+        <select id="s-lang">
+          <option value="en-US">English (US)</option>
+          <option value="en-GB">English (UK)</option>
+          <option value="en-IN">English (India)</option>
+          <option value="en-PK">English (Pakistan)</option>
+          <option value="en-AU">English (Australia)</option>
+        </select></div>
+      <div class="row"><label for="s-auto">Send automatically when I stop talking</label>
+        <input type="checkbox" id="s-auto"></div>
+    </div>
+    <div class="card">
+      <h2>Spoken replies</h2>
+      <div class="row"><label for="s-speak">Speak replies aloud</label>
+        <input type="checkbox" id="s-speak"></div>
+      <div class="row"><label for="s-voice">Voice</label>
+        <select id="s-voice"><option value="">Phone default</option></select></div>
+      <div class="row"><label for="s-rate">Speed</label>
+        <input type="range" id="s-rate" min="0.6" max="1.6" step="0.1"></div>
+      <div class="row"><label for="s-pitch">Pitch</label>
+        <input type="range" id="s-pitch" min="0.6" max="1.4" step="0.1"></div>
+      <div class="btns">
+        <button class="btn pri" id="b-test">Test voice</button>
+        <button class="btn" id="b-stopspeak">Stop speaking</button>
+      </div>
+    </div>
+    <div class="card"><h2>Diagnostics</h2><div class="diag" id="diag"></div></div>
+    <div class="card"><h2>Data</h2>
+      <div class="btns"><button class="btn dng" id="b-clear">Clear conversation</button></div></div>
+  </section>
+
+  <section id="page-help" class="page help">
+    <div class="card">
+      <h2>How to use</h2>
+      <ol>
+        <li>Tap the green microphone and allow it if Chrome asks.</li>
+        <li>Speak. Pause and it sends itself, or tap the microphone again.</li>
+        <li>Check the <b>Hand</b> tab to see what the app understood. Fix anything there by hand.</li>
+      </ol>
+      <h3>Things you can say</h3>
+      <ul>
+        <li>"Cash game, stack 100 big blinds"</li>
+        <li>"Tournament, stack 25"</li>
+        <li>"I have ace king suited on the button"</li>
+        <li>"Pocket queens in the big blind"</li>
+        <li>"Nine eight of hearts" (suits: spades, hearts, diamonds, clubs)</li>
+        <li>"Villain is in the cutoff"</li>
+        <li>"Flop is king seven two"</li>
+        <li>"Turn jack of clubs" / "River four"</li>
+        <li>"Pot is 12" / "Facing a bet of 8"</li>
+        <li>"I call" / "I raise to 30" (goes in the action log)</li>
+      </ul>
+      <h3>Commands</h3>
+      <p>"new hand", "clear my cards", "clear board", "save hand", "summary", "repeat that", "stop talking".</p>
+      <h3>Notes</h3>
+      <p>Say numbers as digits (12, not twelve). Amounts are in big blinds. Enter the pot as it is now, including the bet you face. If you do not say a suit, the card shows with a dashed border and no suit.</p>
+      <p>Pot odds shown are plain math: the equity needed to break even on a call.</p>
+      <h3>Microphone problems</h3>
+      <p>Open the page in Chrome. If blocked: Chrome menu &rarr; Settings &rarr; Site settings &rarr; Microphone. Voice recognition needs internet. You can always type, or use the keyboard microphone key.</p>
+      <h3>Learning tool only</h3>
+      <p>This app is for practice, learning and reviewing hands you have already played. Do not use it for live decisions in real-money games where outside assistance is not allowed.</p>
+    </div>
+  </section>
+</main>
+
+<div id="dock">
+  <div id="alts"></div>
+  <div id="inputrow">
+    <textarea id="txt" placeholder="Speak, or type here..." rows="1"></textarea>
+    <button class="btn pri" id="send">Send</button>
+  </div>
+  <div id="microw">
+    <button class="btn side" id="repeat">Repeat</button>
+    <button id="mic" aria-label="Microphone">&#127908;</button>
+    <button class="btn side" id="shush">Stop</button>
+  </div>
+  <div id="hint">Tap the microphone and speak</div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- helpers ---------- */
+  function $(id) { return document.getElementById(id); }
+  function load(key, fallback) {
+    try { var v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+    catch (e) { return fallback; }
+  }
+  function save(key, val) {
+    try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {}
+  }
+
+  /* ---------- state ---------- */
+  var SETTINGS_KEY = 'pva_settings_v1';
+  var LOG_KEY = 'pva_log_v1';
+  var HAND_KEY = 'pva_hand_v2';
+  var SAVED_KEY = 'pva_saved_v2';
+  var defaults = { lang: 'en-US', autoSend: true, speak: true, rate: 1.0, pitch: 1.0, voiceURI: '' };
+  var saved = load(SETTINGS_KEY, {});
+  var settings = {};
+  Object.keys(defaults).forEach(function (k) { settings[k] = (saved[k] !== undefined) ? saved[k] : defaults[k]; });
+  var log = load(LOG_KEY, []);
+  if (!Array.isArray(log)) { log = []; }
+  var lastBotText = '';
+
+  function blankHand() {
+    return { hero: [], board: [], mode: 'cash', stack: '', pos: '', vpos: '', pot: '', call: '', log: [] };
+  }
+  var H = blankHand();
+  (function () {
+    var s = load(HAND_KEY, null);
+    if (s && typeof s === 'object') {
+      Object.keys(H).forEach(function (k) { if (s[k] !== undefined) { H[k] = s[k]; } });
+    }
+    if (!Array.isArray(H.hero)) { H.hero = []; }
+    if (!Array.isArray(H.board)) { H.board = []; }
+    if (!Array.isArray(H.log)) { H.log = []; }
+  })();
+  var savedHands = load(SAVED_KEY, []);
+  if (!Array.isArray(savedHands)) { savedHands = []; }
+
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var hasTTS = ('speechSynthesis' in window) && ('SpeechSynthesisUtterance' in window);
+  var rec = null;
+  var listening = false;
+  var gotAnyResult = false;
+  var lastAlternatives = [];
+  var speaking = false;
+
+  /* ---------- status ---------- */
+  function setStatus(text, cls) {
+    var s = $('status');
+    s.textContent = text;
+    s.className = cls || '';
+  }
+  function setHint(text) { $('hint').textContent = text || ''; }
+
+  /* ---------- conversation log ---------- */
+  function renderLog() {
+    var box = $('log');
+    box.innerHTML = '';
+    if (!log.length) {
+      var e = document.createElement('div');
+      e.className = 'empty';
+      e.innerHTML = 'Tap the green microphone and talk.<br>Try: "I have ace king suited on the button".';
+      box.appendChild(e);
+      return;
+    }
+    log.forEach(function (m) {
+      var d = document.createElement('div');
+      d.className = 'msg ' + (m.role === 'user' ? 'user' : 'bot');
+      d.textContent = m.text;
+      box.appendChild(d);
+    });
+    var main = document.querySelector('main');
+    main.scrollTop = main.scrollHeight;
+  }
+  function addMsg(role, text) {
+    log.push({ role: role, text: text, t: Date.now() });
+    if (log.length > 60) { log = log.slice(log.length - 60); }
+    save(LOG_KEY, log);
+    renderLog();
+  }
+
+  /* ---------- text to speech ---------- */
+  function getVoices() {
+    if (!hasTTS) { return []; }
+    try { return window.speechSynthesis.getVoices() || []; } catch (e) { return []; }
+  }
+  function fillVoices() {
+    var sel = $('s-voice');
+    var voices = getVoices();
+    sel.innerHTML = '';
+    var o = document.createElement('option');
+    o.value = ''; o.textContent = 'Phone default';
+    sel.appendChild(o);
+    voices.forEach(function (v) {
+      var op = document.createElement('option');
+      op.value = v.voiceURI;
+      op.textContent = v.name + ' (' + v.lang + ')';
+      sel.appendChild(op);
+    });
+    sel.value = settings.voiceURI || '';
+    if (sel.value !== (settings.voiceURI || '')) { sel.value = ''; }
+  }
+  function stopSpeaking() {
+    if (hasTTS) { try { window.speechSynthesis.cancel(); } catch (e) {} }
+    speaking = false;
+    if (!listening) { setStatus('Ready', ''); }
+  }
+  function speak(text, force) {
+    if (!hasTTS || !text) { return; }
+    if (!settings.speak && !force) { return; }
+    try {
+      window.speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(text);
+      u.rate = Number(settings.rate) || 1;
+      u.pitch = Number(settings.pitch) || 1;
+      u.lang = settings.lang;
+      if (settings.voiceURI) {
+        var vs = getVoices();
+        for (var i = 0; i < vs.length; i++) {
+          if (vs[i].voiceURI === settings.voiceURI) { u.voice = vs[i]; u.lang = vs[i].lang; break; }
+        }
+      }
+      u.onstart = function () { speaking = true; if (!listening) { setStatus('Speaking...', 'speak'); } };
+      u.onend = function () { speaking = false; if (!listening) { setStatus('Ready', ''); } };
+      u.onerror = function () { speaking = false; if (!listening) { setStatus('Ready', ''); } };
+      window.speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+
+  /* ---------- poker data ---------- */
+  var ORD = '23456789TJQKA';
+  var RN = { A: 'Ace', K: 'King', Q: 'Queen', J: 'Jack', T: 'Ten', '9': 'Nine', '8': 'Eight', '7': 'Seven', '6': 'Six', '5': 'Five', '4': 'Four', '3': 'Three', '2': 'Two' };
+  var SN = { s: 'spades', h: 'hearts', d: 'diamonds', c: 'clubs' };
+  var SY = { s: '\u2660', h: '\u2665', d: '\u2666', c: '\u2663' };
+  var WM = { ace: 'A', king: 'K', queen: 'Q', jack: 'J', ten: 'T', '10': 'T', nine: '9', eight: '8', seven: '7', six: '6', five: '5', four: '4', three: '3', two: '2', deuce: '2', '9': '9', '8': '8', '7': '7', '6': '6', '5': '5', '4': '4', '3': '3', '2': '2' };
+  var RW = 'aces?|kings?|queens?|jacks?|tens?|nines?|eights?|sevens?|sixes|six|fives?|fours?|threes?|twos?|deuces?|10|[2-9]';
+  var POS = [
+    [/\b(?:utg\s*(?:plus|\+)\s*(?:one|1)|under the gun plus one)\b/, 'UTG+1'],
+    [/\b(?:under the gun|utg)\b/, 'UTG'],
+    [/\b(?:early position|ep)\b/, 'EP'],
+    [/\b(?:middle position|mp)\b/, 'MP'],
+    [/\b(?:lo\s?jack|lj)\b/, 'LJ'],
+    [/\b(?:hi\s?jack|hj)\b/, 'HJ'],
+    [/\b(?:cut\s?off|co)\b/, 'CO'],
+    [/\b(?:button|btn|dealer)\b/, 'BTN'],
+    [/\b(?:small blind|sb)\b/, 'SB'],
+    [/\b(?:big blind|bb)\b/, 'BB']
+  ];
+
+  function rk(w) {
+    if (WM[w]) { return WM[w]; }
+    w = w.replace(/s$/, '');
+    if (WM[w]) { return WM[w]; }
+    w = w.replace(/e$/, '');
+    return WM[w];
+  }
+
+  function parseCards(seg) {
+    var re = new RegExp('\\b(' + RW + ')\\b(?:\\s+of)?(?:\\s+(spades?|hearts?|diamonds?|clubs?))?', 'g');
+    var out = { cards: [], suited: false, off: false };
+    out.off = /\boff\s?suit(?:ed)?\b/.test(seg);
+    out.suited = !out.off && /\bsuited\b/.test(seg);
+    var m;
+    while ((m = re.exec(seg)) !== null) {
+      var r = rk(m[1]);
+      if (!r) { continue; }
+      var su = m[2] ? m[2].charAt(0) : null;
+      out.cards.push({ r: r, s: su, as: false });
+      if (/s$/.test(m[1]) && !su) { out.cards.push({ r: r, s: null, as: false }); }
+    }
+    return out;
+  }
+
+  function finishHero(p) {
+    var h = p.cards.slice(0, 2);
+    if (h.length === 2 && !h[0].s && !h[1].s) {
+      if (h[0].r === h[1].r || p.off) { h[0].s = 's'; h[1].s = 'h'; h[0].as = h[1].as = true; }
+      else if (p.suited) { h[0].s = h[1].s = 's'; h[0].as = h[1].as = true; }
+    }
+    return h;
+  }
+
+  function cardName(c) { return RN[c.r] + ((c.s && !c.as) ? ' of ' + SN[c.s] : ''); }
+  function cardsText(a) { return a.map(cardName).join(', '); }
+  function plural(r) { return r === '6' ? 'Sixes' : RN[r] + 's'; }
+
+  function handDesc() {
+    var h = H.hero;
+    if (h.length !== 2) { return ''; }
+    if (h[0].r === h[1].r) { return 'Pocket ' + plural(h[0].r); }
+    var a = h[0], b = h[1];
+    if (ORD.indexOf(a.r) < ORD.indexOf(b.r)) { var t = a; a = b; b = t; }
+    var d = RN[a.r] + ' ' + RN[b.r];
+    if (a.s && b.s) { d += (a.s === b.s) ? ' suited' : ' offsuit'; }
+    if (ORD.indexOf(a.r) - ORD.indexOf(b.r) === 1) { d += ', connected'; }
+    return d;
+  }
+
+  function street() {
+    var n = H.board.length;
+    return n === 0 ? 'Preflop' : n === 3 ? 'Flop' : n === 4 ? 'Turn' : n === 5 ? 'River' : 'Partial board';
+  }
+  function modeName() { return H.mode === 'mtt' ? 'Tournament' : H.mode === 'sng' ? 'Sit and go' : 'Cash game'; }
+  function bb(n) { return n === '' ? 'not set' : n + ' big blinds'; }
+
+  function oddsText() {
+    var out = [];
+    if (H.pot !== '' && H.call !== '' && H.call > 0) {
+      out.push('Pot odds: you need about ' + (H.call / (H.pot + H.call) * 100).toFixed(0) + ' percent equity to break even on a call.');
+    }
+    if (H.pot !== '' && H.pot > 0 && H.stack !== '') {
+      out.push('Stack to pot ratio is ' + (H.stack / H.pot).toFixed(1) + '.');
+    }
+    return out.join(' ');
+  }
+
+  function summary() {
+    var p = [];
+    p.push(modeName() + (H.stack !== '' ? ', stack ' + H.stack + ' big blinds' : '') + '.');
+    p.push(H.hero.length ? 'Your cards: ' + cardsText(H.hero) + (handDesc() ? ' (' + handDesc() + ')' : '') + '.' : 'Your cards are not set.');
+    if (H.board.length) { p.push(street() + ': ' + cardsText(H.board) + '.'); }
+    if (H.pos) { p.push('You are in ' + H.pos + '.'); }
+    if (H.vpos) { p.push('Villain is in ' + H.vpos + '.'); }
+    if (H.pot !== '') { p.push('Pot ' + H.pot + '.'); }
+    if (H.call !== '') { p.push('Facing a bet of ' + H.call + '.'); }
+    var o = oddsText();
+    if (o) { p.push(o); }
+    return p.join(' ');
+  }
+
+  /* ---------- hand screen ---------- */
+  function cardEl(c) {
+    var s = document.createElement('span');
+    s.className = 'pc' + ((c.s === 'h' || c.s === 'd') ? ' red' : '') + ((c.as || !c.s) ? ' as' : '');
+    s.textContent = (c.r === 'T' ? '10' : c.r) + (c.s ? SY[c.s] : '');
+    return s;
+  }
+  function fillCards(id, arr, empty) {
+    var b = $(id);
+    b.innerHTML = '';
+    if (!arr.length) {
+      var n = document.createElement('span');
+      n.className = 'nocard'; n.textContent = empty;
+      b.appendChild(n);
+      return;
+    }
+    arr.forEach(function (c) { b.appendChild(cardEl(c)); });
+  }
+  function renderHand() {
+    fillCards('v-hero', H.hero, 'Not set');
+    fillCards('v-board', H.board, 'No board yet');
+    $('v-street').textContent = '(' + street() + ')';
+    $('v-mode').textContent = modeName();
+    $('v-stack').textContent = H.stack === '' ? 'not set' : H.stack + ' bb';
+    $('v-pos').textContent = H.pos || 'not set';
+    $('v-vpos').textContent = H.vpos || 'not set';
+    $('v-pot').textContent = H.pot === '' ? 'not set' : H.pot + ' bb';
+    $('v-call').textContent = H.call === '' ? 'nothing' : H.call + ' bb';
+    $('v-saved').textContent = savedHands.length;
+    $('e-mode').value = H.mode;
+    $('e-stack').value = H.stack;
+    $('e-pos').value = H.pos;
+    $('e-pot').value = H.pot;
+    $('e-call').value = H.call;
+    var box = $('v-log');
+    box.innerHTML = '';
+    if (!H.log.length) {
+      var d0 = document.createElement('div'); d0.textContent = 'Nothing yet.'; d0.style.color = '#8a9bb0';
+      box.appendChild(d0);
+    }
+    H.log.forEach(function (s) {
+      var d = document.createElement('div'); d.textContent = s; box.appendChild(d);
+    });
+  }
+  function commit() { save(HAND_KEY, H); renderHand(); }
+  function addAction(s) {
+    H.log.unshift(s);
+    if (H.log.length > 30) { H.log = H.log.slice(0, 30); }
+  }
+  function numVal(v) {
+    if (v === '' || v === null) { return ''; }
+    var n = parseFloat(v);
+    return isNaN(n) ? '' : n;
+  }
+
+  /* ---------- understanding speech ---------- */
+  function parseSpeech(raw) {
+    var t = raw.toLowerCase().replace(/[,!?;:]/g, ' ').replace(/\.(?!\d)/g, ' ').replace(/\s+/g, ' ').trim();
+    var ch = [];
+    var m;
+
+    if (/^i (?:bet|raise|call|fold|check|shove|jam|limp)\b/.test(t)) {
+      addAction(raw.trim());
+      return ['logged your action'];
+    }
+
+    var t0 = t;
+    function ex(re) {
+      var mm = t.match(re);
+      if (!mm) { return null; }
+      t = t.replace(mm[0], ' ');
+      return parseFloat(mm[1]);
+    }
+    var v;
+    v = ex(/\bpot\s*(?:is|of|at|size|currently)?\s*(\d+(?:\.\d+)?)(?:\s*(?:bb|big blinds?))?/);
+    if (v !== null) { H.pot = v; ch.push('pot ' + v); }
+
+    v = ex(/\b(?:stacks?|effective)\s*(?:is|of|at|stack)?\s*(\d+(?:\.\d+)?)(?:\s*(?:bb|big blinds?))?/);
+    if (v === null) { v = ex(/(\d+(?:\.\d+)?)\s*(?:bb|big blinds?)\s*(?:deep|stack|effective)/); }
+    if (v !== null) { H.stack = v; ch.push('stack ' + v + ' big blinds'); }
+
+    v = ex(/\b(?:facing|bets?|raises? to|jams?|shoves?)(?:\s+(?:a|an|bet|raise|of|to|for|is))*\s+(\d+(?:\.\d+)?)(?:\s*(?:bb|big blinds?))?/);
+    if (v !== null) { H.call = v; ch.push('facing a bet of ' + v); }
+
+    if (v === null && H.stack === '') { /* no-op */ }
+    var fb = t.match(/(\d+(?:\.\d+)?)\s*(?:bb|big blinds?)/);
+    if (fb) { H.stack = parseFloat(fb[1]); ch.push('stack ' + H.stack + ' big blinds'); t = t.replace(fb[0], ' '); }
+
+    if (/\b(?:sit and go|sit n go|sng)\b/.test(t)) { H.mode = 'sng'; ch.push('sit and go'); }
+    else if (/\b(?:tournament|mtt)\b/.test(t)) { H.mode = 'mtt'; ch.push('tournament'); }
+    else if (/\bcash\b/.test(t)) { H.mode = 'cash'; ch.push('cash game'); }
+
+    var tp = t, found = [];
+    POS.forEach(function (p) {
+      var pm = tp.match(p[0]);
+      if (pm) {
+        found.push({ code: p[1], idx: pm.index });
+        tp = tp.slice(0, pm.index) + new Array(pm[0].length + 1).join(' ') + tp.slice(pm.index + pm[0].length);
+      }
+    });
+    found.forEach(function (f) {
+      var ctx = t.slice(Math.max(0, f.idx - 30), f.idx);
+      if (/villain|opponent|\bhe\b|\bshe\b|\bhis\b|\bfrom\b|versus|\bvs\b|against/.test(ctx)) {
+        H.vpos = f.code; ch.push('villain in ' + f.code);
+      } else {
+        H.pos = f.code; ch.push('you are in ' + f.code);
+      }
+    });
+
+    var kw = /\b(?:flop|turn|river|board)\b/;
+    var first = t.search(kw);
+    var before = first < 0 ? t : t.slice(0, first);
+    var pc = parseCards(before);
+    if (pc.cards.length) {
+      H.hero = finishHero(pc);
+      ch.push('your cards ' + cardsText(H.hero));
+    }
+    var sre = /\b(flop|turn|river|board)\b([\s\S]*?)(?=\b(?:flop|turn|river|board)\b|$)/g;
+    while ((m = sre.exec(t)) !== null) {
+      var bc = parseCards(m[2]).cards;
+      if (!bc.length) { continue; }
+      if (m[1] === 'turn') { H.board = H.board.slice(0, 3).concat(bc[0]); }
+      else if (m[1] === 'river') { H.board = H.board.slice(0, 4).concat(bc[0]); }
+      else { H.board = bc.slice(0, 5); }
+      ch.push(street().toLowerCase() + ' ' + cardsText(H.board));
+    }
+    if (ch.length) { addAction(raw.trim()); }
+    return ch;
+  }
+
+  /* ---------- assistant brain ---------- */
+  function respond(text) {
+    var t = text.toLowerCase().replace(/[.,!?]/g, '').trim();
+    if (/^(stop talking|be quiet|stop speaking|shut up|quiet)$/.test(t)) {
+      stopSpeaking();
+      return { text: 'Okay, I stopped talking.', silent: true };
+    }
+    if (/^(repeat( that)?|say that again|say again|what did you say)$/.test(t)) {
+      if (lastBotText) { return { text: lastBotText }; }
+      return { text: 'I have nothing to repeat yet.' };
+    }
+    if (/^(new hand|next hand|reset hand)$/.test(t)) {
+      H.hero = []; H.board = []; H.pos = ''; H.vpos = ''; H.pot = ''; H.call = ''; H.log = [];
+      commit();
+      return { text: 'New hand. Tell me your cards.' };
+    }
+    if (/^clear (my )?cards$/.test(t)) { H.hero = []; commit(); return { text: 'Your cards are cleared.' }; }
+    if (/^clear (the )?board$/.test(t)) { H.board = []; commit(); return { text: 'Board cleared.' }; }
+    if (/^save( the| this)? hand$/.test(t)) { return { text: saveHand() }; }
+    if (/^(summary|status|what do i have|read it back|read back|what is the hand|what's the hand)$/.test(t)) {
+      return { text: summary() };
+    }
+
+    var ch = parseSpeech(text);
+    commit();
+    if (!ch.length) {
+      return { text: 'I did not catch poker details. Try: "I have ace king suited on the button", "flop is king seven two", "pot is 12", or "facing a bet of 8".' };
+    }
+    var msg = 'Got it: ' + ch.join('; ') + '.';
+    var hd = handDesc();
+    if (hd) { msg += ' That is ' + hd + '.'; }
+    var o = oddsText();
+    if (o) { msg += ' ' + o; }
+    return { text: msg };
+  }
+
+  function saveHand() {
+    if (!H.hero.length && !H.board.length) { return 'Nothing to save yet.'; }
+    savedHands.push({ t: Date.now(), hero: H.hero, board: H.board, mode: H.mode, stack: H.stack, pos: H.pos, vpos: H.vpos, pot: H.pot, call: H.call, log: H.log });
+    if (savedHands.length > 50) { savedHands = savedHands.slice(savedHands.length - 50); }
+    save(SAVED_KEY, savedHands);
+    renderHand();
+    return 'Hand saved. You have ' + savedHands.length + ' saved.';
+  }
+
+  function submit(text) {
+    text = (text || '').replace(/\s+/g, ' ').trim();
+    if (!text) { setHint('Nothing to send. Say or type something first.'); return; }
+    $('txt').value = '';
+    clearAlts();
+    addMsg('user', text);
+    var r = respond(text);
+    if (r.text) {
+      if (!r.silent) { lastBotText = r.text; }
+      addMsg('bot', r.text);
+      if (!r.silent) { speak(r.text); }
+    }
+    setHint('Tap the microphone and speak');
+  }
+
+  /* ---------- alternatives (corrections) ---------- */
+  function clearAlts() { $('alts').innerHTML = ''; lastAlternatives = []; }
+  function showAlts(list) {
+    var box = $('alts');
+    box.innerHTML = '';
+    var seen = {};
+    var first = ($('txt').value || '').toLowerCase();
+    list.forEach(function (a) {
+      var k = a.toLowerCase();
+      if (!k || seen[k] || k === first) { return; }
+      seen[k] = true;
+      var b = document.createElement('button');
+      b.textContent = a;
+      b.onclick = function () { $('txt').value = a; box.innerHTML = ''; $('txt').focus(); };
+      box.appendChild(b);
+    });
+  }
+
+  /* ---------- speech recognition ---------- */
+  function friendlyError(code) {
+    switch (code) {
+      case 'not-allowed':
+      case 'service-not-allowed':
+        return 'Microphone blocked. Allow it in Chrome site settings (see Help tab), or type / use the keyboard microphone.';
+      case 'no-speech': return 'I did not hear anything. Tap the microphone and try again.';
+      case 'audio-capture': return 'No microphone found or it is in use by another app.';
+      case 'network': return 'Voice recognition needs internet. Check your connection, or type instead.';
+      case 'language-not-supported': return 'This language is not supported. Pick another in Settings.';
+      case 'aborted': return '';
+      default: return 'Voice error: ' + code;
+    }
+  }
+
+  function startListening() {
+    if (!SR) {
+      showBanner('Speech recognition is not available in this browser. Open this page in Chrome, or use the keyboard microphone or typing.', true);
+      $('txt').focus();
+      return;
+    }
+    stopSpeaking();
+    clearAlts();
+    $('txt').value = '';
+    gotAnyResult = false;
+    try {
+      rec = new SR();
+      rec.lang = settings.lang;
+      rec.continuous = false;
+      rec.interimResults = true;
+      rec.maxAlternatives = 3;
+    } catch (e) {
+      showBanner('Could not start speech recognition: ' + e.message, true);
+      return;
+    }
+
+    rec.onstart = function () {
+      listening = true;
+      $('mic').classList.add('on');
+      setStatus('Listening...', 'on');
+      setHint('Listening... tap the microphone to stop');
+      hideBanner();
+    };
+
+    rec.onresult = function (ev) {
+      var finalText = '', interim = '';
+      var alts = [];
+      for (var i = 0; i < ev.results.length; i++) {
+        var res = ev.results[i];
+        if (res.isFinal) {
+          finalText += res[0].transcript + ' ';
+          for (var j = 1; j < res.length; j++) { alts.push(res[j].transcript.trim()); }
+        } else {
+          interim += res[0].transcript;
+        }
+      }
+      var shown = (finalText + interim).trim();
+      if (shown) { gotAnyResult = true; }
+      $('txt').value = shown;
+      lastAlternatives = alts;
+    };
+
+    rec.onerror = function (ev) {
+      var msg = friendlyError(ev.error);
+      setStatus('Voice error', 'err');
+      setHint(msg);
+      if (msg) { showBanner(msg, true); }
+    };
+
+    rec.onend = function () {
+      listening = false;
+      $('mic').classList.remove('on');
+      if (!speaking) { setStatus('Ready', ''); }
+      var text = $('txt').value.trim();
+      if (gotAnyResult && text) {
+        if (settings.autoSend) {
+          submit(text);
+        } else {
+          setHint('Check the text, fix it if needed, then press Send');
+          if (lastAlternatives.length) { showAlts(lastAlternatives); }
+        }
+      } else if ($('status').className !== 'err') {
+        setHint('Did not catch anything. Tap the microphone to try again.');
+      }
+    };
+
+    try {
+      rec.start();
+    } catch (e) {
+      listening = false;
+      showBanner('Could not start the microphone: ' + e.message, true);
+    }
+  }
+
+  function stopListening() {
+    if (rec) { try { rec.stop(); } catch (e) {} }
+  }
+  function toggleMic() {
+    if (listening) { stopListening(); } else { startListening(); }
+  }
+
+  /* ---------- banner ---------- */
+  function showBanner(text, bad) {
+    var b = $('banner');
+    b.innerHTML = '';
+    var d = document.createElement('div');
+    d.className = 'banner' + (bad ? ' bad' : '');
+    d.textContent = text;
+    b.appendChild(d);
+  }
+  function hideBanner() { $('banner').innerHTML = ''; }
+
+  /* ---------- tabs ---------- */
+  function setTab(name) {
+    var tabs = document.querySelectorAll('nav button');
+    for (var i = 0; i < tabs.length; i++) {
+      tabs[i].classList.toggle('act', tabs[i].getAttribute('data-tab') === name);
+    }
+    var pages = document.querySelectorAll('.page');
+    for (var j = 0; j < pages.length; j++) { pages[j].classList.remove('act'); }
+    $('page-' + name).classList.add('act');
+    if (name === 'settings') { renderDiag(); }
+    if (name === 'hand') { renderHand(); }
+    if (name === 'talk') { var m = document.querySelector('main'); m.scrollTop = m.scrollHeight; }
+  }
+
+  /* ---------- settings UI ---------- */
+  function persist() { save(SETTINGS_KEY, settings); }
+  function initSettings() {
+    $('s-lang').value = settings.lang;
+    $('s-auto').checked = !!settings.autoSend;
+    $('s-speak').checked = !!settings.speak;
+    $('s-rate').value = settings.rate;
+    $('s-pitch').value = settings.pitch;
+
+    $('s-lang').onchange = function () { settings.lang = this.value; persist(); };
+    $('s-auto').onchange = function () { settings.autoSend = this.checked; persist(); };
+    $('s-speak').onchange = function () {
+      settings.speak = this.checked; persist();
+      if (!this.checked) { stopSpeaking(); }
+    };
+    $('s-rate').onchange = function () { settings.rate = parseFloat(this.value); persist(); };
+    $('s-pitch').onchange = function () { settings.pitch = parseFloat(this.value); persist(); };
+    $('s-voice').onchange = function () { settings.voiceURI = this.value; persist(); };
+    $('b-test').onclick = function () {
+      if (!hasTTS) { alert('Spoken replies are not supported in this browser.'); return; }
+      speak('Voice test. Pocket aces, pot odds, and a big blind. Can you hear me?', true);
+    };
+    $('b-stopspeak').onclick = stopSpeaking;
+    $('b-clear').onclick = function () {
+      if (confirm('Delete the whole conversation?')) {
+        log = []; lastBotText = ''; save(LOG_KEY, log); renderLog();
+      }
+    };
+    fillVoices();
+    if (hasTTS) {
+      try { window.speechSynthesis.onvoiceschanged = fillVoices; } catch (e) {}
+      setTimeout(fillVoices, 800);
+      setTimeout(fillVoices, 2500);
+    }
+  }
+
+  function renderDiag() {
+    var rows = [
+      ['Speech recognition', !!SR],
+      ['Spoken replies', hasTTS],
+      ['Local storage', (function () { try { localStorage.setItem('pva_t', '1'); localStorage.removeItem('pva_t'); return true; } catch (e) { return false; } })()],
+      ['Secure page (https/localhost)', !!window.isSecureContext]
+    ];
+    var box = $('diag');
+    box.innerHTML = '';
+    rows.forEach(function (r) {
+      var d = document.createElement('div');
+      var a = document.createElement('span'); a.textContent = r[0];
+      var b = document.createElement('span'); b.textContent = r[1] ? 'Yes' : 'No'; b.className = r[1] ? 'ok' : 'no';
+      d.appendChild(a); d.appendChild(b);
+      box.appendChild(d);
+    });
+  }
+
+  /* ---------- wire up ---------- */
+  function init() {
+    var tabs = document.querySelectorAll('nav button');
+    for (var i = 0; i < tabs.length; i++) {
+      tabs[i].onclick = function () { setTab(this.getAttribute('data-tab')); };
+    }
+    $('mic').onclick = toggleMic;
+    $('send').onclick = function () { stopListening(); submit($('txt').value); };
+    $('txt').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit($('txt').value); }
+    });
+    $('repeat').onclick = function () {
+      if (lastBotText) { speak(lastBotText, true); } else { setHint('Nothing to repeat yet.'); }
+    };
+    $('shush').onclick = stopSpeaking;
+
+    $('e-mode').onchange = function () { H.mode = this.value; commit(); };
+    $('e-stack').onchange = function () { H.stack = numVal(this.value); commit(); };
+    $('e-pos').onchange = function () { H.pos = this.value; commit(); };
+    $('e-pot').onchange = function () { H.pot = numVal(this.value); commit(); };
+    $('e-call').onchange = function () { H.call = numVal(this.value); commit(); };
+    $('b-new').onclick = function () { respond('new hand'); };
+    $('b-clearh').onclick = function () { H.hero = []; commit(); };
+    $('b-clearb').onclick = function () { H.board = []; commit(); };
+    $('b-saveh').onclick = function () { setHint(saveHand()); };
+
+    initSettings();
+    renderLog();
+    renderHand();
+
+    if (!SR) {
+      showBanner('Speech recognition is not available here. Open this page in Chrome. You can still type, or use the keyboard microphone key.', true);
+    } else if (location.protocol === 'file:') {
+      showBanner('Tip: opened from a file. Chrome may ask for microphone permission every time. That is normal.', false);
+    }
+  }
+
+  window.addEventListener('beforeunload', function () { if (hasTTS) { try { window.speechSynthesis.cancel(); } catch (e) {} } });
+  init();
+})();
+</script>
+</body>
+</html>
